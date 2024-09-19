@@ -1,10 +1,8 @@
 package com.cpr3663.cpr_scouting_app;
 
 import android.annotation.SuppressLint;
-import android.app.ActionBar;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
@@ -20,7 +18,6 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.cpr3663.cpr_scouting_app.data.Competitions;
 import com.cpr3663.cpr_scouting_app.data.Devices;
 import com.cpr3663.cpr_scouting_app.databinding.SettingsBinding;
 
@@ -32,21 +29,7 @@ public class Settings extends AppCompatActivity {
     Spinner spinner_Competition;
     Spinner spinner_Device;
     Spinner spinner_Color;
-
-    // Doesn't appear to be needed on Tablet but helps on Virtual Devices.
-    @SuppressLint({"DiscouragedApi", "SetTextI18n", "ClickableViewAccessibility", "ResourceAsColor"})
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        // Hide the status and action bar
-        View decorView = getWindow().getDecorView();
-        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_FULLSCREEN;
-        decorView.setSystemUiVisibility(uiOptions);
-        ActionBar actionBar = getActionBar();
-        if (actionBar != null) actionBar.hide();
-    }
+    int savedCompetitionId;
 
     @SuppressLint({"DiscouragedApi", "SetTextI18n", "ClickableViewAccessibility", "ResourceType"})
     @Override
@@ -77,7 +60,7 @@ public class Settings extends AppCompatActivity {
         spinner_Competition.setAdapter(adp_Competition);
 
         // Set the selection (if there is one) to the saved one
-        int savedCompetitionId = Globals.sp.getInt(Constants.SP_COMPETITION_ID, -1);
+        savedCompetitionId = Globals.sp.getInt(Constants.SP_COMPETITION_ID, -1);
         if ((savedCompetitionId > -1) && (adp_Competition.getCount() > 0))
             spinner_Competition.setSelection(adp_Competition.getPosition(Globals.CompetitionList.getCompetitionDescription(savedCompetitionId)), true);
 
@@ -85,7 +68,7 @@ public class Settings extends AppCompatActivity {
         spinner_Competition.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                ((TextView) parent.getChildAt(0)).setTextColor(getResources().getColor(R.color.cpr_bkgnd));
+                ((TextView) parent.getChildAt(0)).setTextColor(getColor(R.color.cpr_bkgnd));
             }
 
             @Override
@@ -147,7 +130,7 @@ public class Settings extends AppCompatActivity {
         spinner_Color.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                ((TextView) parent.getChildAt(0)).setTextColor(getResources().getColor(R.color.cpr_bkgnd));
+                ((TextView) parent.getChildAt(0)).setTextColor(getColor(R.color.cpr_bkgnd));
             }
 
             @Override
@@ -190,6 +173,8 @@ public class Settings extends AppCompatActivity {
             public void onClick(View view) {
                 int CompetitionId = Globals.CompetitionList.getCompetitionId(spinner_Competition.getSelectedItem().toString());
                 if (CompetitionId > 0) {
+                    // If we changed the CompetitionId, set Global flag to reload some of the data
+                    if (CompetitionId != savedCompetitionId) Globals.NeedToLoadData = true;
                     Globals.spe.putInt(Constants.SP_COMPETITION_ID, CompetitionId);
                 }
                 int DeviceId = Globals.DeviceList.getDeviceId(spinner_Device.getSelectedItem().toString());

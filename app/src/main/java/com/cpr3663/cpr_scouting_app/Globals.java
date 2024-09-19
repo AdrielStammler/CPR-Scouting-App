@@ -30,6 +30,7 @@ public class Globals {
     public static int CurrentMatchNumber;
     public static int CurrentScoutingTeam;
     public static int CurrentDeviceId;
+    public static int CurrentStartPosition;
     public static int CurrentColorId;
 
     public static String CheckBoxTextPadding = "       ";
@@ -40,4 +41,6 @@ public class Globals {
 
     public static SharedPreferences sp;
     public static SharedPreferences.Editor spe;
+
+    public static boolean NeedToLoadData = true;
 }

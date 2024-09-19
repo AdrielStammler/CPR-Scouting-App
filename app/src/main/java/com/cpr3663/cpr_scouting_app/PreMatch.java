@@ -1,14 +1,10 @@
 package com.cpr3663.cpr_scouting_app;
 
 import android.annotation.SuppressLint;
-import android.app.ActionBar;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -36,21 +32,7 @@ public class PreMatch extends AppCompatActivity {
     // To store the inputted name
     protected static String ScouterName;
     protected static CheckBox checkbox_StartNote; // This needs to be global so that Match.java can access it
-
-    // Doesn't appear to be needed on Tablet but helps on Virtual Devices.
-    @SuppressLint({"DiscouragedApi", "SetTextI18n", "ClickableViewAccessibility", "ResourceAsColor"})
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        // Hide the status and action bar
-        View decorView = getWindow().getDecorView();
-        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_FULLSCREEN;
-        decorView.setSystemUiVisibility(uiOptions);
-        ActionBar actionBar = getActionBar();
-        if (actionBar != null) actionBar.hide();
-    }
+    private static String[] Start_Positions = Globals.StartPositionList.getDescriptionList();
 
     @SuppressLint({"SetTextI18n", "MissingInflatedId"})
     @Override
@@ -76,13 +58,22 @@ public class PreMatch extends AppCompatActivity {
         EditText edit_Match = preMatchBinding.editMatch;
         EditText edit_Team = preMatchBinding.editTeamToScout;
         Spinner spinner_StartPos = preMatchBinding.spinnerStartingPosition;
-        TextView text_Match = preMatchBinding.textMatch;
         TextView text_TeamName = preMatchBinding.textTeamToScoutName;
 
         // adds the items from the starting positions array to the list
-        ArrayAdapter<String> adp_StartPos = new ArrayAdapter<String>(this, R.layout.cpr_spinner, Globals.StartPositionList.getDescriptionList());
+        ArrayAdapter<String> adp_StartPos = new ArrayAdapter<String>(this, R.layout.cpr_spinner, Start_Positions);
         adp_StartPos.setDropDownViewResource(R.layout.cpr_spinner_item);
         spinner_StartPos.setAdapter(adp_StartPos);
+        // Search through the list of Start Positions till you find the one that is correct then get its position in the list
+        //  and set that one as selected
+        int start_Pos_DropId = 0;
+        for (int i = 0; i < Start_Positions.length; i++) {
+            if (Start_Positions[i] == Globals.StartPositionList.getStartPositionDescription(Globals.CurrentStartPosition)) {
+                start_Pos_DropId = i;
+                break;
+            }
+        }
+        spinner_StartPos.setSelection(start_Pos_DropId);
 
         Button but_AddOverrideTeamNum = preMatchBinding.butAddOverrideTeamNum;
         CheckBox checkbox_DidPlay = preMatchBinding.checkboxDidPlay;
@@ -106,10 +97,9 @@ public class PreMatch extends AppCompatActivity {
         if (Globals.CurrentMatchNumber > 0) {
             // MUST CONVERT TO STRING or it crashes with out warning
             edit_Match.setText(String.valueOf(Globals.CurrentMatchNumber));
-            if (Globals.CurrentMatchNumber <= Globals.MatchList.getNumberOfMatches()) {
+            if (Globals.CurrentMatchNumber < Globals.MatchList.size()) {
                 Matches.MatchRow Match = Globals.MatchList.getMatchInfoRow(Globals.CurrentMatchNumber);
                 if (Match != null) {
-                    int[] Teams = Match.getListOfTeams();
                     // TODO Set "Teams" to the options in the single select dropdown
                 }
             }
@@ -164,7 +154,7 @@ public class PreMatch extends AppCompatActivity {
                 } else {
                     // Check we have all the fields entered that are needed.  Otherwise, pop a TOAST message instead
                     if (String.valueOf(edit_Match.getText()).isEmpty() || String.valueOf(edit_Team.getText()).isEmpty() || String.valueOf(edit_Name.getText()).isEmpty()
-                            || (spinner_StartPos.getSelectedItem().toString() == Globals.StartPositionList.getStartPositionDescription(Constants.DATA_ID_START_POS_DEFAULT) && checkbox_DidPlay.isChecked())) {
+                            || (spinner_StartPos.getSelectedItem().toString().equals(Globals.StartPositionList.getStartPositionDescription(Constants.DATA_ID_START_POS_DEFAULT)) && checkbox_DidPlay.isChecked())) {
                         Toast.makeText(PreMatch.this, R.string.missing_data, Toast.LENGTH_SHORT).show();
                     } else {
                         // Save off the current match number (Logger needs this)
@@ -183,8 +173,11 @@ public class PreMatch extends AppCompatActivity {
                         Globals.EventLogger.LogData(Constants.LOGKEY_SCOUTER, preMatchBinding.editScouterName.getText().toString().toUpperCase().trim());
                         Globals.EventLogger.LogData(Constants.LOGKEY_DID_PLAY, String.valueOf(preMatchBinding.checkboxDidPlay.isChecked()));
                         Globals.EventLogger.LogData(Constants.LOGKEY_TEAM_SCOUTING, String.valueOf(Globals.CurrentScoutingTeam));
-                        if (checkbox_DidPlay.isChecked())
-                            Globals.EventLogger.LogData(Constants.LOGKEY_START_POSITION, String.valueOf(Globals.StartPositionList.getStartPositionId(spinner_StartPos.getSelectedItem().toString())));
+                        if (checkbox_DidPlay.isChecked()) {
+                            int startPos = Globals.StartPositionList.getStartPositionId(spinner_StartPos.getSelectedItem().toString());
+                            Globals.EventLogger.LogData(Constants.LOGKEY_START_POSITION, String.valueOf(startPos));
+                            Globals.CurrentStartPosition = startPos;
+                        }
 
                         // Save off some fields for next time or later usage
                         ScouterName = String.valueOf(edit_Name.getText());
@@ -202,6 +195,9 @@ public class PreMatch extends AppCompatActivity {
                             //  and do it after the logger is closed so that this can't mess the logger up
                             Globals.CurrentMatchNumber++;
 
+                            // Reset the Saved Start position so that you have to choose it again
+                            Globals.CurrentStartPosition = 0;
+
                             Intent GoToSubmitData = new Intent(PreMatch.this, SubmitData.class);
                             startActivity(GoToSubmitData);
                         }
@@ -217,7 +213,7 @@ public class PreMatch extends AppCompatActivity {
                     String MatchNumStr = String.valueOf(edit_Match.getText());
                     if (!MatchNumStr.isEmpty()) {
                         int MatchNum = Integer.parseInt(MatchNumStr);
-                        if (MatchNum <= Globals.MatchList.getNumberOfMatches()) {
+                        if (MatchNum > 0 && MatchNum < Globals.MatchList.size()) {
                             Matches.MatchRow Match = Globals.MatchList.getMatchInfoRow(MatchNum);
                             if (Match != null) {
                                 // MUST CONVERT TO STRING or it crashes with out warning
@@ -225,42 +221,6 @@ public class PreMatch extends AppCompatActivity {
                                 // TODO Set "Teams" to the options in the single select dropdown
                             }
                         }
-                    }
-                }
-            }
-        });
-
-        edit_Team.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View view, boolean focus) {
-                if (!focus) {
-                    String TeamToScoutStr = String.valueOf(edit_Team.getText());
-                    if (!TeamToScoutStr.isEmpty()) {
-                        int TeamToScout = Integer.parseInt(TeamToScoutStr);
-                        if (TeamToScout > 0 && TeamToScout < Globals.TeamList.size()) {
-                            // This will crash the app instead of returning null if you pass it an invalid num
-                            String ScoutingTeamName = Globals.TeamList.get(TeamToScout);
-                            text_TeamName.setText(ScoutingTeamName);
-                        } else {
-                            text_TeamName.setText("");
-                        }
-                    }
-                }
-            }
-        });
-
-        edit_Team.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View view, boolean focus) {
-                if (!focus) {
-                    String TeamToScoutStr = String.valueOf(edit_Team.getText());
-                    if (!TeamToScoutStr.isEmpty()) {
-                        int TeamToScout = Integer.parseInt(TeamToScoutStr);
-                        if (TeamToScout > 0 && TeamToScout < Globals.TeamList.size()) {
-                            // This will crash the app instead of returning null if you pass it an invalid num
-                            String ScoutingTeamName = Globals.TeamList.get(TeamToScout);
-                            text_TeamName.setText(ScoutingTeamName);
-                        } else text_TeamName.setText("");
                     }
                 }
             }
