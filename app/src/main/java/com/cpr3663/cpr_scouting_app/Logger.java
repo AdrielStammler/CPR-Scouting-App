@@ -33,7 +33,7 @@ public class Logger {
     private static int seq_number_prev_common = 0; // Track previous sequence number for all common events
     private static int seq_number_prev_defended = 0; // Track previous sequence number for just defended toggle
     private static int seq_number_prev_defense = 0; // Track previous sequence number for just defense toggle
-    private static final ArrayList<Pair<String, String>> match_data = new ArrayList<Pair<String, String>>();
+    private static final ArrayList<Pair<String, String>> match_log_data = new ArrayList<Pair<String, String>>();
 
     // Constructor: create the new files
     public Logger(Context in_context) throws IOException {
@@ -42,6 +42,9 @@ public class Logger {
 
         // Ensure the sequence number is reset
         seq_number = 0;
+
+        // If this is a practice, just exit
+        if (Globals.isPractice) return;
 
         // Ensure the path (if it's not blank) has a trailing delimiter
         if (!path.isEmpty()) {
@@ -124,6 +127,9 @@ public class Logger {
 
     // Member Function: Close out the logger.  Write out all of the non-time based match data and close the files.
     public void close(){
+        // If this is a practice, there's nothing to do
+        if (Globals.isPractice) return;
+
         try {
             // Start the csv line with the event key
             String csv_header = Constants.LOGKEY_DATA_KEY;
@@ -140,6 +146,7 @@ public class Logger {
             csv_header += "," + Constants.LOGKEY_TRAP;
             csv_header += "," + Constants.LOGKEY_COMMENTS;
             csv_header += "," + Constants.LOGKEY_START_TIME_OFFSET;
+            csv_header += "," + Constants.LOGKEY_START_TIME;
 
             csv_line += FindValueInPair(Constants.LOGKEY_TEAM_TO_SCOUT);
             csv_line += FindValueInPair(Constants.LOGKEY_TEAM_SCOUTING);
@@ -151,6 +158,7 @@ public class Logger {
             csv_line += FindValueInPair(Constants.LOGKEY_TRAP);
             csv_line += FindValueInPair(Constants.LOGKEY_COMMENTS);
             csv_line += FindValueInPair(Constants.LOGKEY_START_TIME_OFFSET);
+            csv_line += FindValueInPair(Constants.LOGKEY_START_TIME);
 
             // Write out the data
             fos_data.write(csv_header.getBytes(StandardCharsets.UTF_8));
@@ -175,7 +183,7 @@ public class Logger {
         String ret = ",";
 
         // loop through the pairs and stop if you find a key match.  Append the value if found.
-        for(Pair<String, String> p : match_data) {
+        for(Pair<String, String> p : match_log_data) {
             if (p.first.equals(in_Key)) {
                 ret += p.second;
                 break;
@@ -187,6 +195,9 @@ public class Logger {
 
     // Member Function: Log a time-based event
     public void LogEvent(int in_EventId, float in_X, float in_Y, boolean in_NewSequence, double in_time) {
+        // If this is a practice, there's nothing to do
+        if (Globals.isPractice) return;
+
         int seq_number_prev = 0;
 
         // We need to special case the toggle switches.  We must preserve their own "previous" eventID but still
@@ -217,16 +228,13 @@ public class Logger {
         // If this is NOT a new sequence, we need to write out the previous event id that goes with this one
         if (!in_NewSequence) prev = String.valueOf(seq_number_prev);
         
-        // Determine string values for x, y and time. Round them to 1 decimal places.
-        // If they happen to be whole numbers, trim off the ".0"
-        String string_x = String.valueOf((float) Math.round(in_X * 100.0) / 100.0);
-        String string_y = String.valueOf((float) Math.round(in_Y * 100.0) / 100.0);
-        // Determine elapsed time and round to 1 decimal places and match length
+        // Determine string values for x, y and time. Truncate them.
+        String string_x = String.valueOf((int) in_X);
+        String string_y = String.valueOf((int) in_Y);
+        // Determine elapsed time and round to 1 decimal places
         // Get min of elapsed time and match length in order to essentially cap the time that will be recorded
-        String string_time = String.valueOf(Math.min(Math.round((in_time - Match.startTime) / 10.0) / 100.0, Match.TIMER_AUTO_LENGTH + Match.TIMER_TELEOP_LENGTH));
+        String string_time = String.valueOf(Math.min(Math.round((in_time - Match.startTime) / 100.0) / 10.0, Match.TIMER_AUTO_LENGTH + Match.TIMER_TELEOP_LENGTH));
 
-        if (string_x.endsWith(".0")) string_x = string_x.substring(0, string_x.length() - 2);
-        if (string_y.endsWith(".0")) string_y = string_y.substring(0, string_y.length() - 2);
         if (string_time.endsWith(".0")) string_time = string_time.substring(0, string_time.length() - 2);
         
         // Form the output line that goes in the csv file.
@@ -241,11 +249,17 @@ public class Logger {
 
     // Member Function: Log a time-based event (with no time passed in)
     public void LogEvent(int in_EventId, float in_X, float in_Y, boolean in_NewSequence){
+        // If this is a practice, there's nothing to do
+        if (Globals.isPractice) return;
+
         LogEvent(in_EventId, in_X, in_Y, in_NewSequence, System.currentTimeMillis());
     }
 
     // Member Function: Log a non-time based event - just store this for later.
     public void LogData(String in_Key, String in_Value) {
-        match_data.add(new Pair<String, String>(in_Key, in_Value));
+        // If this is a practice, there's nothing to do
+        if (Globals.isPractice) return;
+
+        match_log_data.add(new Pair<>(in_Key, in_Value));
     }
 }

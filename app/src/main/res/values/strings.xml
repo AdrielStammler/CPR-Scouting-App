@@ -20,7 +20,7 @@
     <string name="loading_colors">Loading Color Data…</string>
 
     <string name="missing_data">Please fill in all fields</string>
-    <string name="timer_label">Time:</string>
+    <string name="status_text_label">Last event:\n</string>
 
     <string name="file_error_teams">Error loading teams from data file!</string>
     <string name="file_error_matches">Error loading matches from data file!</string>
@@ -37,6 +37,7 @@
     <string name="settings_heading">Settings</string>
     <string name="settings_competition">Competition:</string>
     <string name="settings_device">Device:</string>
+    <string name="settings_team_pref">Preferred team position:</string>
     <string name="settings_scouting_team">Scouting team number:</string>
     <string name="settings_num_files"># of matches to keep:</string>
     <string name="settings_color">Color palette:</string>
@@ -51,6 +52,7 @@
     <string name="pre_override">Override Team Number</string>
     <string name="pre_new_team_num">Team number:</string>
     <string name="pre_resubmit">Need to re-submit data?</string>
+    <string name="pre_practice">Practice?</string>
 
     <string name="post_heading">Post-Match Scouting Information</string>
     <string name="post_left_start_zone">Left the starting zone?</string>
@@ -62,4 +64,13 @@
     <string name="submit_match_error">Incomplete data files found!</string>
 
     <string name="dropdown_items_selected">selected</string>
+    <string name="dropdown_no_items">None</string>
+
+    <string name="alert_quit_title">Quit app</string>
+    <string name="alert_quit_message">Are you sure you want to Quit the app?</string>
+    <string name="alert_quit_positive">Quit</string>
+    <string name="alert_endMatch_title">End Match</string>
+    <string name="alert_endMatch_message">Are you sure you want to End the Match early? This cannot be undone.</string>
+    <string name="alert_endMatch_positive">End</string>
+    <string name="alert_cancel">Cancel</string>
 </resources>

@@ -1,12 +1,15 @@
 package com.cpr3663.cpr_scouting_app;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.text.Layout;
 import android.text.SpannableString;
+import android.text.style.AbsoluteSizeSpan;
 import android.text.style.ForegroundColorSpan;
 import android.view.ContextMenu;
 import android.view.MenuItem;
@@ -31,6 +34,8 @@ import androidx.core.view.WindowInsetsCompat;
 import com.cpr3663.cpr_scouting_app.data.Colors;
 import com.cpr3663.cpr_scouting_app.databinding.MatchBinding;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.Timer;
@@ -44,9 +49,10 @@ public class Match extends AppCompatActivity {
     protected static final int TIMER_TELEOP_LENGTH = 135; // in seconds
     private static final int TIMER_UPDATE_RATE = 1_000; // in milliseconds
     private static final int TIMER_AUTO_TELEOP_DELAY = 3; // in seconds
-    private static final int BUTTON_FLASH_INTERVAL = 1_000; // in milliseconds
+    private static final int BUTTON_FLASH_INTERVAL = 2_000; // in milliseconds
+    private static final int BUTTON_FLASH_BLINK_INTERVAL = 250; // in milliseconds
     private static final int BUTTON_COLOR_FLASH = Color.RED;
-    private static final int BUTTON_COLOR_NORMAL = R.color.cpr_bkgnd;
+    private static final int BUTTON_COLOR_NORMAL = Color.TRANSPARENT;
     private static final int BUTTON_TEXT_COLOR_DISABLED = Color.LTGRAY;
     private static final String ORIENTATION_LANDSCAPE = "l";
     private static final String ORIENTATION_LANDSCAPE_REVERSE = "lr";
@@ -96,7 +102,7 @@ public class Match extends AppCompatActivity {
                 elapsedSeconds = (int) (TIMER_TELEOP_LENGTH + TIMER_AUTO_LENGTH - Math.round((System.currentTimeMillis() - startTime) / 1_000.0));
             }
             if (elapsedSeconds < 0) elapsedSeconds = 0;
-            text_Time.setText("Time: " + elapsedSeconds / 60 + ":" + String.format("%02d", elapsedSeconds % 60));
+            text_Time.setText(elapsedSeconds / 60 + ":" + String.format("%02d", elapsedSeconds % 60));
         }
     }
 
@@ -107,9 +113,23 @@ public class Match extends AppCompatActivity {
     public class FlashingTimerTask extends TimerTask {
         @Override
         public void run() {
-            // Flashes both "switch_Defense" and "toggle_Defended"
-            flash_button(switch_Defense);
-            flash_button(switch_Defended);
+            // If the button is ON then toggle the background color between COLOR_FLASH and COLOR_NORMAL
+            // Always start by setting it to "normal" to avoid the case where you toggle it off during the Thread.sleep
+            // since it will remain BUTTON_COLOR_FLASH even though it's off.
+            switch_NotMoving.setBackgroundColor(BUTTON_COLOR_NORMAL);
+            switch_Defense.setBackgroundColor(BUTTON_COLOR_NORMAL);
+            switch_Defended.setBackgroundColor(BUTTON_COLOR_NORMAL);
+
+            try {
+                Thread.sleep(BUTTON_FLASH_BLINK_INTERVAL);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
+            // If it's checked, wait a bit then make it BUTTON_COLOR_FLASH
+            if (switch_NotMoving.isChecked()) switch_NotMoving.setBackgroundColor(BUTTON_COLOR_FLASH);
+            if (switch_Defense.isChecked()) switch_Defense.setBackgroundColor(BUTTON_COLOR_FLASH);
+            if (switch_Defended.isChecked()) switch_Defended.setBackgroundColor(BUTTON_COLOR_FLASH);
         }
     }
 
@@ -132,6 +152,8 @@ public class Match extends AppCompatActivity {
     // Define the buttons on the page
     Button but_MatchControl;
     Button but_Back;
+    @SuppressLint("UseSwitchCompatOrMaterialCode")
+    Switch switch_NotMoving;
     @SuppressLint("UseSwitchCompatOrMaterialCode")
     Switch switch_Defense;
     @SuppressLint("UseSwitchCompatOrMaterialCode")
@@ -192,7 +214,7 @@ public class Match extends AppCompatActivity {
         // Map the text box variable to the actual text box
         text_Time = matchBinding.textTime;
         // Initialize the match timer textbox settings
-        text_Time.setText(getString(R.string.timer_label) + " " + TIMER_AUTO_LENGTH);
+        text_Time.setText(String.valueOf(TIMER_AUTO_LENGTH));
         text_Time.setTextSize(20F);
         text_Time.setTextAlignment(Layout.Alignment.ALIGN_CENTER.ordinal() + 2);
         text_Time.setVisibility(View.INVISIBLE);
@@ -217,7 +239,25 @@ public class Match extends AppCompatActivity {
                         start_Teleop();
                         break;
                     case Constants.PHASE_TELEOP:
-                        end_Match();
+                        if (startTime + (TIMER_AUTO_LENGTH + TIMER_TELEOP_LENGTH) * 1000 > System.currentTimeMillis())
+                            new AlertDialog.Builder(view.getContext())
+                            .setTitle(getString(R.string.alert_endMatch_title))
+                            .setMessage(getString(R.string.alert_endMatch_message))
+
+                            // Specifying a listener allows you to take an action before dismissing the dialog.
+                            // The dialog is automatically dismissed when a dialog button is clicked.
+                            .setPositiveButton(getString(R.string.alert_endMatch_positive), new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    end_Match();
+                                }
+                            })
+
+                            // A null listener allows the button to dismiss the dialog and take no further action.
+                            .setNegativeButton(getString(R.string.alert_cancel), null)
+                            // TODO make the icon work
+//                          .setIcon(getDrawable(android.R.attr.alertDialogIcon))
+                            .show();
+                        else end_Match();
                         break;
                 }
             }
@@ -230,13 +270,43 @@ public class Match extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 // Go to the previous page
-                Intent GoToNextPage = new Intent(Match.this, PreMatch.class);
-                startActivity(GoToNextPage);
+                Intent GoToPreviousPage = new Intent(Match.this, PreMatch.class);
+                startActivity(GoToPreviousPage);
             }
         });
 
         // Define a field image
         ImageView image_Field = matchBinding.imageFieldView;
+
+        // Map the Not Moving Switch to the actual switch
+        switch_NotMoving = matchBinding.switchNotMoving;
+        // Initialize the Not Moving Switch settings
+        switch_NotMoving.setTextColor(BUTTON_TEXT_COLOR_DISABLED);
+        switch_NotMoving.setBackgroundColor(BUTTON_COLOR_NORMAL);
+        switch_NotMoving.setVisibility(View.INVISIBLE);
+        // Do this so that you can't mess with the switch during the wrong phases
+        switch_NotMoving.setEnabled(false);
+
+        // This gets called if either the switch is clicked on, or the slide toggle is flipped (covers both)
+        switch_NotMoving.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                // If the button is being turned ON make it RED otherwise LTGRAY
+                if (isChecked) {
+                    Globals.EventLogger.LogEvent(Constants.EVENT_ID_NOT_MOVING_START, 0,0,true);
+                    switch_NotMoving.setBackgroundColor(BUTTON_COLOR_FLASH);
+                } else {
+                    Globals.EventLogger.LogEvent(Constants.EVENT_ID_NOT_MOVING_END, 0,0,false);
+                    switch_NotMoving.setBackgroundColor(BUTTON_COLOR_NORMAL);
+                }
+            }
+        });
+
+        switch_NotMoving.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Need this listener or else the onCheckedChanged won't fire either.
+            }
+        });
 
         // Map the Defense Switch to the actual switch
         switch_Defense = matchBinding.switchDefense;
@@ -299,6 +369,7 @@ public class Match extends AppCompatActivity {
 
         // Define a context menu
         RelativeLayout ContextMenu = matchBinding.ContextMenu;
+
         // This is required it will not run without it
         registerForContextMenu(image_Field);
         // So that it activates on a normal click instead of a long click
@@ -334,22 +405,22 @@ public class Match extends AppCompatActivity {
         // Check to make sure the game is going
         if (!matchPhase.equals(Constants.PHASE_NONE)) {
             // Get the events
-            ArrayList<String> events_al;
+            ArrayList<String> events;
             is_start_of_seq = false;
 
             if (eventPrevious == -1) {
-                events_al = Globals.EventList.getEventsForPhase(matchPhase);
+                events = Globals.EventList.getEventsForPhase(matchPhase);
                 is_start_of_seq = true;
             } else {
-                events_al = Globals.EventList.getNextEvents(eventPrevious);
-                if ((events_al == null) || events_al.isEmpty()) {
-                    events_al = Globals.EventList.getEventsForPhase(matchPhase);
+                events = Globals.EventList.getNextEvents(eventPrevious);
+                if ((events == null) || events.isEmpty()) {
+                    events = Globals.EventList.getEventsForPhase(matchPhase);
                     is_start_of_seq = true;
                 }
             }
 
             // Add all the events
-            for (String event : events_al) {
+            for (String event : events) {
                 menu.add(event);
             }
 
@@ -357,21 +428,22 @@ public class Match extends AppCompatActivity {
             for (int i = 0; i < menu.size(); i++) {
                 MenuItem item = menu.getItem(i);
                 SpannableString ss = new SpannableString(item.getTitle());
+                ss.setSpan(new AbsoluteSizeSpan(24), 0, ss.length(), 0);
 
-                // If this menuItem has "Miss" or Score in the text, see if we should use a special color
-                if (ss.toString().contains("Miss")) {
+                // If this menuItem has "Miss"/"Failed" or "Score"/"Success" in the text, see if we should use a special color
+                if ((ss.toString().contains("Miss")) || (ss.toString().contains("Failed"))) {
                     Colors.ColorRow cr = Globals.ColorList.getColorRow(Globals.CurrentColorId - 1);
                     if (cr != null) {
                         ss.setSpan(new ForegroundColorSpan(cr.getColorMiss()), 0, ss.length(), 0);
-                        item.setTitle(ss);
                     }
-                } else if (ss.toString().contains("Score")) {
+                } else if ((ss.toString().contains("Score")) || (ss.toString().contains("Success"))) {
                     Colors.ColorRow cr = Globals.ColorList.getColorRow(Globals.CurrentColorId - 1);
                     if (cr != null) {
                         ss.setSpan(new ForegroundColorSpan(cr.getColorScore()), 0, ss.length(), 0);
-                        item.setTitle(ss);
                     }
                 }
+
+                item.setTitle(ss);
             }
         }
     }
@@ -379,7 +451,7 @@ public class Match extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     @Override
     public boolean onContextItemSelected(@NonNull MenuItem item) {
-        matchBinding.textStatus.setText("Last Event: " + Objects.requireNonNull(item.getTitle()));
+        matchBinding.textStatus.setText(getString(R.string.status_text_label) + Objects.requireNonNull(item.getTitle()));
         eventPrevious = Globals.EventList.getEventId(item.getTitle().toString());
         Globals.EventLogger.LogEvent(eventPrevious, current_X_Relative, current_Y_Relative, is_start_of_seq, currentTouchTime);
         return true;
@@ -396,6 +468,9 @@ public class Match extends AppCompatActivity {
         // Record the current/start time of the match to calculate elapsed time
         startTime = System.currentTimeMillis();
 
+        // Log the starting time
+        Globals.EventLogger.LogData(Constants.LOGKEY_START_TIME, LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss")));
+
         // Disable orientation listening if we can!  Once we start the match don't allow rotation anymore
         if (OEL.canDetectOrientation()) {
             OEL.disable();
@@ -411,6 +486,9 @@ public class Match extends AppCompatActivity {
         // Hide Back Button (too late to go back now!)
         but_Back.setClickable(false);
         but_Back.setVisibility(View.INVISIBLE);
+
+        // Clear out the team to override (kept it in case they hit the Back button)
+        Globals.CurrentTeamOverrideNum = 0;
 
         // Show the time
         text_Time.setVisibility(View.VISIBLE);
@@ -447,7 +525,7 @@ public class Match extends AppCompatActivity {
     public void start_Teleop() {
         // Set the start Time so that the Display Time will be correct
         startTime = System.currentTimeMillis() - TIMER_AUTO_LENGTH * 1_000;
-        text_Time.setText(getString(R.string.timer_label) + " " + TIMER_TELEOP_LENGTH / 60 + ":" + String.format("%02d", TIMER_TELEOP_LENGTH % 60));
+        text_Time.setText(TIMER_TELEOP_LENGTH / 60 + ":" + String.format("%02d", TIMER_TELEOP_LENGTH % 60));
 
         match_Timer.schedule(teleop_timertask, TIMER_TELEOP_LENGTH * 1_000);
 
@@ -461,12 +539,15 @@ public class Match extends AppCompatActivity {
         Match.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                switch_NotMoving.setEnabled(true);
+                switch_NotMoving.setTextColor(Color.WHITE);
+                switch_NotMoving.setVisibility(View.VISIBLE);
                 switch_Defense.setEnabled(true);
                 switch_Defense.setTextColor(Color.WHITE);
+                switch_Defense.setVisibility(View.VISIBLE);
                 switch_Defended.setEnabled(true);
                 switch_Defended.setTextColor(Color.WHITE);
                 switch_Defended.setVisibility(View.VISIBLE);
-                switch_Defense.setVisibility(View.VISIBLE);
 
                 but_MatchControl.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.stop_match, 0);
             }
@@ -474,7 +555,7 @@ public class Match extends AppCompatActivity {
     }
 
     // =============================================================================================
-    // Function:    end_match
+    // Function:    end_Teleop
     // Description: Ends teleop, but not the match so that you can still finish up
     // Output:      void
     // Parameters:  N/A
@@ -482,7 +563,7 @@ public class Match extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     public void end_Teleop() {
         but_MatchControl.setText(getString(R.string.button_match_next));
-        but_MatchControl.setTextColor(getColor(R.color.cpr_bkgnd));
+        but_MatchControl.setTextColor(Color.TRANSPARENT);
         but_MatchControl.setBackgroundColor(getColor(R.color.white));
 
         // Certain actions can't be set from a non-UI thread (like withing a TimerTask that runs on a
@@ -519,31 +600,15 @@ public class Match extends AppCompatActivity {
         matchPhase = Constants.PHASE_NONE;
 
         // If either of the toggles are on turn them off
-        if (switch_Defended.isChecked()) Globals.EventLogger.LogEvent(Constants.EVENT_ID_DEFENDED_END, 0, 0, false);
+        if (switch_NotMoving.isChecked()) Globals.EventLogger.LogEvent(Constants.EVENT_ID_NOT_MOVING_END, 0, 0, false);
         if (switch_Defense.isChecked()) Globals.EventLogger.LogEvent(Constants.EVENT_ID_DEFENSE_END, 0, 0, false);
+        if (switch_Defended.isChecked()) Globals.EventLogger.LogEvent(Constants.EVENT_ID_DEFENDED_END, 0, 0, false);
+        switch_NotMoving.setChecked(false);
         switch_Defense.setChecked(false);
         switch_Defended.setChecked(false);
 
         // Go to the next page
         Intent GoToPostMatch = new Intent(Match.this, PostMatch.class);
         startActivity(GoToPostMatch);
-    }
-
-    // =============================================================================================
-    // Function:    flash_button
-    // Description: Flash the background color of the button.  Since all toggle-able buttons extend
-    //              from CompoundButton, we can use that as the param type.
-    // Output:      void
-    // Parameters:  in_button - specific the button you want to flash.
-    // =============================================================================================
-    @SuppressLint("ResourceAsColor")
-    public void flash_button(@NonNull CompoundButton in_button) {
-        // If the button is ON then toggle the background color between COLOR_FLASH and COLOR_NORMAL
-        if (in_button.isChecked()) {
-            if (System.currentTimeMillis() / BUTTON_FLASH_INTERVAL % 2 == 0)
-                in_button.setBackgroundColor(BUTTON_COLOR_NORMAL);
-            else
-                in_button.setBackgroundColor(BUTTON_COLOR_FLASH);
-        }
     }
 }

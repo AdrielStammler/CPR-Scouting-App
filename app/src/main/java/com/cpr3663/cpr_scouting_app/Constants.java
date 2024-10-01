@@ -3,7 +3,6 @@ package com.cpr3663.cpr_scouting_app;
 public class Constants {
     public static final String NO_TEAM = "No Team Exists"; // use to check if no team exists for a given team number
     public static final String NO_MATCH = "No Match"; // use to check if no match info exists for a given match number
-    public static final String NO_COMPETITION = "No Competition Name Exists"; // use to check if no competition info exists for a given competition id
     public static final int NO_EVENT = 999; // use to check if the eventID you're looking for doesn't exist
 
     public static final String PHASE_AUTO = "Auto";
@@ -22,6 +21,7 @@ public class Constants {
     public static final String LOGKEY_COMMENTS = "D_Comments";
     public static final String LOGKEY_START_TIME_OFFSET = "D_StartOffset";
     public static final String LOGKEY_DATA_KEY = "D_Key";
+    public static final String LOGKEY_START_TIME = "D_Start";
     public static final String LOGKEY_EVENT_KEY = "E_Key";
     public static final String LOGKEY_EVENT_SEQ = "E_Seq";
     public static final String LOGKEY_EVENT_ID = "E_ID";
@@ -36,6 +36,8 @@ public class Constants {
     public static final int EVENT_ID_DEFENDED_END = 151;
     public static final int EVENT_ID_DEFENSE_START = 152;
     public static final int EVENT_ID_DEFENSE_END = 153;
+    public static final int EVENT_ID_NOT_MOVING_START = 154;
+    public static final int EVENT_ID_NOT_MOVING_END = 155;
     public static final int EVENT_ID_AUTO_STARTNOTE = 0;
 
     // Shared Preferences Keys
@@ -44,4 +46,7 @@ public class Constants {
     public static final String SP_SCOUTING_TEAM = "ScoutingTeam";
     public static final String SP_NUM_MATCHES = "NumberOfMatches";
     public static final String SP_COLOR_CONTEXT_MENU = "ColorContextMenu";
+    public static final String SP_PREF_TEAM_POS = "PreferredTeamPosition";
+
+    public static final String[] SETTINGS_PREF_TEAM_POS = new String[]{"No Preference", "Blue 1", "Blue 2", "Blue 3", "Red 1", "Red 2", "Red 3"};
 }
