@@ -58,6 +58,8 @@ public class PreMatch extends AppCompatActivity {
         Globals.CurrentCompetitionId = Globals.sp.getInt(Constants.SP_COMPETITION_ID, 0);
         Globals.CurrentDeviceId = Globals.sp.getInt(Constants.SP_DEVICE_ID, 0);
         Globals.CurrentColorId = Globals.sp.getInt(Constants.SP_COLOR_CONTEXT_MENU, 1);
+        Globals.CurrentPrefTeamPos = Globals.sp.getInt(Constants.SP_PREF_TEAM_POS, 0);
+        Globals.isPractice = false;
 
         // Create components
         EditText edit_Match = preMatchBinding.editMatch;
@@ -68,6 +70,7 @@ public class PreMatch extends AppCompatActivity {
         CheckBox checkbox_DidPlay = preMatchBinding.checkboxDidPlay;
         checkbox_StartNote = preMatchBinding.checkboxStartNote;
         CheckBox checkbox_Override = preMatchBinding.checkboxOverride;
+        CheckBox checkbox_Practice = preMatchBinding.checkboxPractice;
         CheckBox checkbox_ReSubmit = preMatchBinding.checkboxResubmit;
         EditText edit_OverrideTeamNum = preMatchBinding.editOverrideTeamNum;
         EditText edit_Name = preMatchBinding.editScouterName;
@@ -118,7 +121,6 @@ public class PreMatch extends AppCompatActivity {
         // So add it in now.
         checkbox_DidPlay.setText(checkbox_DidPlay.getText() + Globals.CheckBoxTextPadding);
         checkbox_StartNote.setText(checkbox_StartNote.getText() + Globals.CheckBoxTextPadding);
-        checkbox_ReSubmit.setText(checkbox_ReSubmit.getText() + Globals.CheckBoxTextPadding);
 
         // Create a text box to input the scouters name
         edit_Name.setText(ScouterName);
@@ -162,6 +164,7 @@ public class PreMatch extends AppCompatActivity {
         checkbox_DidPlay.setChecked(true);
         checkbox_StartNote.setChecked(true);
         checkbox_ReSubmit.setChecked(false);
+        checkbox_Practice.setChecked(false);
 
         // Hide override components initially
         text_Override.setVisibility(View.INVISIBLE);
@@ -176,6 +179,13 @@ public class PreMatch extends AppCompatActivity {
                 text_Override.setVisibility(state);
                 edit_OverrideTeamNum.setVisibility(state);
                 but_AddOverrideTeamNum.setVisibility(state);
+            }
+        });
+
+        checkbox_Practice.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Globals.isPractice = checkbox_Practice.isChecked();
             }
         });
 
@@ -231,15 +241,21 @@ public class PreMatch extends AppCompatActivity {
                         CurrentTeamToScoutPosition = spinner_Team.getSelectedItemPosition();
 
                         // Set up the Logger - if it fails, we better stop now, or we won't capture any data!
-                        try {
-                            Globals.EventLogger = new Logger(getApplicationContext());
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
+                        // Only if we don't have one set up already (could be there if BACK button was hit on Match)
+                        // otherwise, clear out any saved data from before.
+                        if (Globals.EventLogger == null) {
+                            try {
+                                Globals.EventLogger = new Logger(getApplicationContext());
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        } else {
+                            Globals.EventLogger.clear();
                         }
 
                         // Log all of the data from this page
                         Globals.EventLogger.LogData(Constants.LOGKEY_TEAM_TO_SCOUT, preMatchBinding.spinnerTeamToScout.getSelectedItem().toString());
-                        Globals.EventLogger.LogData(Constants.LOGKEY_SCOUTER, preMatchBinding.editScouterName.getText().toString().toUpperCase().trim());
+                        Globals.EventLogger.LogData(Constants.LOGKEY_SCOUTER, preMatchBinding.editScouterName.getText().toString().toUpperCase().replace(" ",""));
                         Globals.EventLogger.LogData(Constants.LOGKEY_DID_PLAY, String.valueOf(preMatchBinding.checkboxDidPlay.isChecked()));
                         Globals.EventLogger.LogData(Constants.LOGKEY_TEAM_SCOUTING, String.valueOf(Globals.CurrentScoutingTeam));
                         if (checkbox_DidPlay.isChecked()) {
@@ -313,6 +329,14 @@ public class PreMatch extends AppCompatActivity {
 
                             // Apply the adapter to the spinner.
                             spinner_Team.setAdapter(adapter);
+
+                            // If there's a default position, select the right team
+                            if (Globals.CurrentPrefTeamPos > 0) {
+                                String prefTeam = Match.getTeamInPosition(Constants.SETTINGS_PREF_TEAM_POS[Globals.CurrentPrefTeamPos]);
+                                int prefPos = teamsInMatch.indexOf(prefTeam);
+                                spinner_Team.setSelection(prefPos);
+                            }
+
                             CurrentTeamToScoutPosition = spinner_Team.getSelectedItemPosition();
                         } else {
                             ArrayList<String> noTeams = new ArrayList<>();

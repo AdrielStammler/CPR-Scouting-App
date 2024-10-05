@@ -33,6 +33,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.cpr3663.cpr_scouting_app.data.Colors;
 import com.cpr3663.cpr_scouting_app.databinding.MatchBinding;
+import com.cpr3663.cpr_scouting_app.databinding.PreMatchBinding;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -214,11 +215,19 @@ public class Match extends AppCompatActivity {
         // Map the text box variable to the actual text box
         text_Time = matchBinding.textTime;
         // Initialize the match timer textbox settings
-        text_Time.setText(String.valueOf(TIMER_AUTO_LENGTH));
-        text_Time.setTextSize(20F);
-        text_Time.setTextAlignment(Layout.Alignment.ALIGN_CENTER.ordinal() + 2);
         text_Time.setVisibility(View.INVISIBLE);
         text_Time.setBackgroundColor(Color.TRANSPARENT);
+        text_Time.setTextSize(24F);
+
+        // If this is a practice, put a message in the Status
+        if (Globals.isPractice) {
+            matchBinding.textStatus.setTextColor(Color.YELLOW);
+            matchBinding.textStatus.setTextSize(20F);
+            matchBinding.textStatus.setText(getString(R.string.status_practice));
+        } else {
+            matchBinding.textStatus.setTextColor(Color.LTGRAY);
+            matchBinding.textStatus.setTextSize(16F);
+        }
 
         // Map the button variable to the actual button
         but_MatchControl = matchBinding.butMatchControl;
@@ -269,6 +278,12 @@ public class Match extends AppCompatActivity {
         but_Back.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                // If this is a practice, we need to clear out the Logger since we have an instance of Logger, but during
+                // practice, we don't open any files.  If the next time we get here from Pre-Match, if it's NOT a practice,
+                // we'll try to write out to the same "dummy" Logger and crash.  Resetting the Logger here ensures we do the
+                // right instantiation in Pre-Match.
+                if (Globals.isPractice) Globals.EventLogger = null;
+
                 // Go to the previous page
                 Intent GoToPreviousPage = new Intent(Match.this, PreMatch.class);
                 startActivity(GoToPreviousPage);
@@ -430,13 +445,13 @@ public class Match extends AppCompatActivity {
                 SpannableString ss = new SpannableString(item.getTitle());
                 ss.setSpan(new AbsoluteSizeSpan(24), 0, ss.length(), 0);
 
-                // If this menuItem has "Miss" or Score in the text, see if we should use a special color
-                if (ss.toString().contains("Miss")) {
+                // If this menuItem has "Miss"/"Failed" or "Score"/"Success" in the text, see if we should use a special color
+                if ((ss.toString().contains("Miss")) || (ss.toString().contains("Failed"))) {
                     Colors.ColorRow cr = Globals.ColorList.getColorRow(Globals.CurrentColorId - 1);
                     if (cr != null) {
                         ss.setSpan(new ForegroundColorSpan(cr.getColorMiss()), 0, ss.length(), 0);
                     }
-                } else if (ss.toString().contains("Score")) {
+                } else if ((ss.toString().contains("Score")) || (ss.toString().contains("Success"))) {
                     Colors.ColorRow cr = Globals.ColorList.getColorRow(Globals.CurrentColorId - 1);
                     if (cr != null) {
                         ss.setSpan(new ForegroundColorSpan(cr.getColorScore()), 0, ss.length(), 0);
@@ -451,7 +466,7 @@ public class Match extends AppCompatActivity {
     @SuppressLint("SetTextI18n")
     @Override
     public boolean onContextItemSelected(@NonNull MenuItem item) {
-        matchBinding.textStatus.setText(getString(R.string.status_text_label) + Objects.requireNonNull(item.getTitle()));
+        if (!Globals.isPractice) matchBinding.textStatus.setText(getString(R.string.status_text_label) + Objects.requireNonNull(item.getTitle()));
         eventPrevious = Globals.EventList.getEventId(item.getTitle().toString());
         Globals.EventLogger.LogEvent(eventPrevious, current_X_Relative, current_Y_Relative, is_start_of_seq, currentTouchTime);
         return true;

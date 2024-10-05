@@ -33,10 +33,11 @@ public class Globals {
     public static int CurrentStartPosition;
     public static int CurrentColorId;
     public static int CurrentTeamOverrideNum;
+    public static int CurrentPrefTeamPos;
 
     public static String CheckBoxTextPadding = "       ";
 
-    public static Logger EventLogger;
+    public static Logger EventLogger = null;
 
     public static int NumberMatchFilesKept;
 
@@ -44,4 +45,5 @@ public class Globals {
     public static SharedPreferences.Editor spe;
 
     public static boolean NeedToLoadData = true;
+    public static boolean isPractice = false;
 }
