@@ -24,8 +24,6 @@ import androidx.core.view.WindowInsetsCompat;
 import com.cpr3663.cpr_scouting_app.data.Matches;
 import com.cpr3663.cpr_scouting_app.databinding.PreMatchBinding;
 
-import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 public class PreMatch extends AppCompatActivity {
@@ -35,7 +33,7 @@ public class PreMatch extends AppCompatActivity {
     private PreMatchBinding preMatchBinding;
     // To store the inputted name
     protected static String ScouterName;
-    protected static CheckBox checkbox_StartNote; // This needs to be global so that Match.java can access it
+    protected CheckBox checkbox_StartNote; // This needs to be global so that Match.java can access it
     private static final String[] Start_Positions = Globals.StartPositionList.getDescriptionList();
     public static int CurrentTeamToScoutPosition;
 
@@ -87,7 +85,7 @@ public class PreMatch extends AppCompatActivity {
         //  and set that one as selected
         int start_Pos_DropId = 0;
         for (int i = 0; i < Start_Positions.length; i++) {
-            if (Start_Positions[i] == Globals.StartPositionList.getStartPositionDescription(Globals.CurrentStartPosition)) {
+            if (Start_Positions[i].equals(Globals.StartPositionList.getStartPositionDescription(Globals.CurrentStartPosition))) {
                 start_Pos_DropId = i;
                 break;
             }
@@ -229,6 +227,8 @@ public class PreMatch extends AppCompatActivity {
                 if (checkbox_ReSubmit.isChecked()) {
                     Intent GoToSubmitData = new Intent(PreMatch.this, SubmitData.class);
                     startActivity(GoToSubmitData);
+
+                    finish();
                 } else {
                     // Check we have all the fields entered that are needed.  Otherwise, pop a TOAST message instead
                     if (String.valueOf(edit_Match.getText()).isEmpty() || spinner_Team.getSelectedItem().toString().equals(getString(R.string.dropdown_no_items))
@@ -240,21 +240,14 @@ public class PreMatch extends AppCompatActivity {
                         Globals.NumberMatchFilesKept = Globals.sp.getInt(Constants.SP_NUM_MATCHES, 5);
                         CurrentTeamToScoutPosition = spinner_Team.getSelectedItemPosition();
 
-                        // Set up the Logger - if it fails, we better stop now, or we won't capture any data!
-                        // Only if we don't have one set up already (could be there if BACK button was hit on Match)
-                        // otherwise, clear out any saved data from before.
-                        if (Globals.EventLogger == null) {
-                            try {
-                                Globals.EventLogger = new Logger(getApplicationContext());
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        } else {
-                            Globals.EventLogger.clear();
-                        }
+                        // Set up the Logger
+                        // null it out first in case we have one set up already (could be there if BACK button was hit on Match)
+                        Globals.EventLogger = null;
+                        Globals.EventLogger = new Logger(getApplicationContext());
 
                         // Log all of the data from this page
-                        Globals.EventLogger.LogData(Constants.LOGKEY_TEAM_TO_SCOUT, preMatchBinding.spinnerTeamToScout.getSelectedItem().toString());
+                        Globals.CurrentTeamToScout = Integer.parseInt(preMatchBinding.spinnerTeamToScout.getSelectedItem().toString());
+                        Globals.EventLogger.LogData(Constants.LOGKEY_TEAM_TO_SCOUT, String.valueOf(Globals.CurrentTeamToScout));
                         Globals.EventLogger.LogData(Constants.LOGKEY_SCOUTER, preMatchBinding.editScouterName.getText().toString().toUpperCase().replace(" ",""));
                         Globals.EventLogger.LogData(Constants.LOGKEY_DID_PLAY, String.valueOf(preMatchBinding.checkboxDidPlay.isChecked()));
                         Globals.EventLogger.LogData(Constants.LOGKEY_TEAM_SCOUTING, String.valueOf(Globals.CurrentScoutingTeam));
@@ -262,6 +255,12 @@ public class PreMatch extends AppCompatActivity {
                             int startPos = Globals.StartPositionList.getStartPositionId(spinner_StartPos.getSelectedItem().toString());
                             Globals.EventLogger.LogData(Constants.LOGKEY_START_POSITION, String.valueOf(startPos));
                             Globals.CurrentStartPosition = startPos;
+                        }
+
+                        // Log if they started with a note (the match hasn't started so we need to specify a "0" time
+                        // or else it will log as max match time which wastes 2 log characters for no benefit)
+                        if (checkbox_StartNote.isChecked()) {
+                            Globals.EventLogger.LogEvent(Constants.EVENT_ID_AUTO_STARTNOTE, 0, 0, true, 0);
                         }
 
                         // Save off some fields for next time or later usage
@@ -272,8 +271,8 @@ public class PreMatch extends AppCompatActivity {
                             Intent GoToMatch = new Intent(PreMatch.this, Match.class);
                             startActivity(GoToMatch);
                         } else {
-                            // Since we're jumping to the Submit page, we need to close the Logger first.
-                            Globals.EventLogger.close();
+                            // Since we're jumping to the Submit page, we need to clear the Logger first.
+                            Globals.EventLogger.clear();
                             Globals.EventLogger = null;
 
                             // Increases the match number so that it auto fills for the next match correctly
@@ -286,6 +285,8 @@ public class PreMatch extends AppCompatActivity {
                             Intent GoToSubmitData = new Intent(PreMatch.this, SubmitData.class);
                             startActivity(GoToSubmitData);
                         }
+
+                        finish();
                     }
                 }
             }
